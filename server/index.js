@@ -51,6 +51,17 @@ app.get('/values/all', async (req, res) => {
 
 });
 
+app.get('/values/current', async (req, res) => {
+  redisClient.hgetall('values', (err, values) => {
+    if (err) {
+      console.error('Error fetching from Redis:', err);
+      return res.status(500).send('Redis error');
+    }
+    res.send(values);
+  });
+});
+
+
 app.post('/values', async (req, res) => {
   const index = req.body.index;
 
@@ -70,17 +81,6 @@ app.post('/values', async (req, res) => {
 
   res.send({ working: true });
 });
-
-app.get('/values/current', async (req, res) => {
-  redisClient.hgetall('values', (err, values) => {
-    if (err) {
-      console.error('Error fetching from Redis:', err);
-      return res.status(500).send('Redis error');
-    }
-    res.send(values);
-  });
-});
-
 
 app.listen(5000, err => {
   console.log('Listening')
