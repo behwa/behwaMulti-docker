@@ -72,7 +72,7 @@ class Fib extends Component {
   render() {
     return (
       <div style={{ padding: '2rem', fontFamily: 'Arial' }}>
-        <h2>Fibonacci Calculator</h2>
+        <h2>Fibonacci Calculator Test</h2>
 
         <form onSubmit={this.handleSubmit} style={{ marginBottom: '1.5rem' }}>
           <label htmlFor="fib-index">Enter your index:</label>
