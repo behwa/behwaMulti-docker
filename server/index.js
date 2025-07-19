@@ -53,7 +53,13 @@ app.get('/values/all', async (req, res) => {
 });
 
 app.get('/values/current', async (req, res) => {
+  console.log('Received request to /values/current');
   redisClient.hgetall('values', (err, values) => {
+    if (err) {
+      console.error('Redis error:', err);
+      return res.status(500).send('Redis error');
+    }
+    console.log('Redis values:', values);
     res.send(values);
   });
 });
@@ -70,6 +76,17 @@ app.post('/values', async (req, res) => {
   pgClient.query('INSERT INTO values(number) VALUES($1)', [index]);
 
   res.send({ working: true });
+});
+
+app.get('/api/redis-test', (req, res) => {
+  redisClient.ping((err, result) => {
+    if (err) {
+      console.error('❌ Redis ping failed:', err);
+      return res.status(500).send('Redis is not connected');
+    }
+    console.log('✅ Redis ping success:', result);
+    res.send(`Redis is working: ${result}`);
+  });
 });
 
 app.listen(5000, (err) => {
