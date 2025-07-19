@@ -1,6 +1,13 @@
 const keys = require('./keys');
 const { createClient } = require('redis');
 
+
+console.log('🔧 Redis config Worker:', {
+  host: keys.redisHost,
+  port: keys.redisPort,
+  tls: true
+});
+
 const redisClient = createClient({
   socket: {
     host: keys.redisHost,
@@ -9,6 +16,11 @@ const redisClient = createClient({
     reconnectStrategy: () => 1000,
   }
 });
+
+redisClient.on('connect', () => console.log('✅ Redis Worker socket connected'));
+redisClient.on('ready', () => console.log('🚀 Redis Worker client ready'));
+redisClient.on('reconnecting', () => console.log('♻️ Redis Worker reconnecting...'));
+redisClient.on('error', (err) => console.error('❌ Redis Worker error:', err));
 
 const sub = redisClient.duplicate();
 

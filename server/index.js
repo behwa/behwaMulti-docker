@@ -29,6 +29,12 @@ pgClient.on('connect', (client) => {
 // Redis Client Setup
 const { createClient } = require('redis');
 
+console.log('🔧 Redis config Server:', {
+  host: keys.redisHost,
+  port: keys.redisPort,
+  tls: true
+});
+
 const redisClient = createClient({
   socket: {
     host: keys.redisHost,
@@ -38,7 +44,10 @@ const redisClient = createClient({
   },
 });
 
-redisClient.on('error', (err) => console.error('❌ Redis error:', err));
+redisClient.on('connect', () => console.log('✅ Redis Server socket connected'));
+redisClient.on('ready', () => console.log('🚀 Redis Server client ready'));
+redisClient.on('reconnecting', () => console.log('♻️ Redis Server reconnecting...'));
+redisClient.on('error', (err) => console.error('❌ Redis Server error:', err));
 
 let redisPublisher;
 
