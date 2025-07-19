@@ -33,6 +33,11 @@ const redisClient = redis.createClient({
   port: keys.redisPort,
   retry_strategy: () => 1000,
 });
+
+redisClient.on('connect', () => {
+  console.log(`✅ Connected to Redis at ${keys.redisHost}:${keys.redisPort}`);
+});
+
 const redisPublisher = redisClient.duplicate();
 
 // Express route handlers
