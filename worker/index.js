@@ -3,12 +3,10 @@ const keys = require('./keys');
 
 console.log('Connecting to Redis at', keys.redisHost, keys.redisPort);
 
-// Redis Client Setup with TLS
+// Create Redis client with TLS
 const redisClient = createClient({
+  url: `rediss://${keys.redisHost}:${keys.redisPort}`, // rediss:// enables TLS
   socket: {
-    host: keys.redisHost,
-    port: keys.redisPort,
-    tls: true, // Enable TLS
     reconnectStrategy: () => 1000,
   },
 });
@@ -23,7 +21,7 @@ redisClient.on('connect', () => {
 
 await redisClient.connect();
 
-// Duplicate connection for subscriber
+// Duplicate client for subscriber
 const sub = redisClient.duplicate();
 
 sub.on('error', (err) => {
@@ -32,12 +30,13 @@ sub.on('error', (err) => {
 
 await sub.connect();
 
-// Fibonacci calculator
+// Fibonacci logic
 function fib(index) {
   if (index < 2) return 1;
   return fib(index - 1) + fib(index - 2);
 }
 
+// Subscribe and respond
 await sub.subscribe('insert', async (message) => {
   console.log(`📨 Received message ${message} on 'insert' channel`);
   await redisClient.hSet('values', message, fib(parseInt(message)));
