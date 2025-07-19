@@ -17,7 +17,7 @@ const pgClient = new Pool({
   database: keys.pgDatabase,
   password: keys.pgPassword,
   port: keys.pgPort,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
 });
 
 pgClient.on('connect', (client) => {
@@ -27,68 +27,81 @@ pgClient.on('connect', (client) => {
 });
 
 // Redis Client Setup
-const redis = require('redis');
-const redisClient = redis.createClient({
-  host: keys.redisHost,
-  port: keys.redisPort,
-  retry_strategy: () => 1000,
+const { createClient } = require('redis');
+
+const redisClient = createClient({
+  socket: {
+    host: keys.redisHost,
+    port: keys.redisPort,
+    tls: true, 
+    reconnectStrategy: () => 1000,
+  },
 });
 
-redisClient.on('connect', () => {
+redisClient.on('error', (err) => console.error('❌ Redis error:', err));
+
+let redisPublisher;
+
+async function startServer() {
+  await redisClient.connect();
   console.log(`✅ Connected to Redis at ${keys.redisHost}:${keys.redisPort}`);
-});
 
-const redisPublisher = redisClient.duplicate();
+  redisPublisher = redisClient.duplicate();
+  await redisPublisher.connect();
 
-// Express route handlers
+  // Express route handlers
 
-app.get('/', (req, res) => {
-  res.send('Hi');
-});
+  app.get('/', (req, res) => {
+    res.send('Hi');
+  });
 
-app.get('/values/all', async (req, res) => {
-  const values = await pgClient.query('SELECT * from values');
+  app.get('/values/all', async (req, res) => {
+    const values = await pgClient.query('SELECT * from values');
+    res.send(values.rows);
+  });
 
-  res.send(values.rows);
-});
-
-app.get('/values/current', async (req, res) => {
-  console.log('Received request to /values/current');
-  redisClient.hgetall('values', (err, values) => {
-    if (err) {
+  app.get('/values/current', async (req, res) => {
+    console.log('Received request to /values/current');
+    try {
+      const values = await redisClient.hGetAll('values');
+      console.log('Redis values:', values);
+      res.send(values);
+    } catch (err) {
       console.error('Redis error:', err);
-      return res.status(500).send('Redis error');
+      res.status(500).send('Redis error');
     }
-    console.log('Redis values:', values);
-    res.send(values);
   });
-});
 
-app.post('/values', async (req, res) => {
-  const index = req.body.index;
+  app.post('/values', async (req, res) => {
+    const index = req.body.index;
 
-  if (parseInt(index) > 40) {
-    return res.status(422).send('Index too high');
-  }
+    if (parseInt(index) > 40) {
+      return res.status(422).send('Index too high');
+    }
 
-  redisClient.hset('values', index, 'Nothing yet!');
-  redisPublisher.publish('insert', index);
-  pgClient.query('INSERT INTO values(number) VALUES($1)', [index]);
+    await redisClient.hSet('values', index, 'Nothing yet!');
+    await redisPublisher.publish('insert', index);
+    pgClient.query('INSERT INTO values(number) VALUES($1)', [index]);
 
-  res.send({ working: true });
-});
+    res.send({ working: true });
+  });
 
-app.get('/redis-test', (req, res) => {
-  redisClient.ping((err, result) => {
-    if (err) {
+  app.get('/redis-test', async (req, res) => {
+    try {
+      const result = await redisClient.ping();
+      console.log('✅ Redis ping success:', result);
+      res.send(`Redis is working: ${result}`);
+    } catch (err) {
       console.error('❌ Redis ping failed:', err);
-      return res.status(500).send('Redis is not connected');
+      res.status(500).send('Redis is not connected');
     }
-    console.log('✅ Redis ping success:', result);
-    res.send(`Redis is working: ${result}`);
   });
-});
 
-app.listen(5000, (err) => {
-  console.log('Listening');
+  app.listen(5000, (err) => {
+    console.log('Listening');
+  });
+}
+
+startServer().catch((err) => {
+  console.error('❌ Failed to start server:', err);
 });
