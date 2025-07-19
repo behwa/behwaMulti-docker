@@ -78,7 +78,7 @@ app.post('/values', async (req, res) => {
   res.send({ working: true });
 });
 
-app.get('/api/redis-test', (req, res) => {
+app.get('/redis-test', (req, res) => {
   redisClient.ping((err, result) => {
     if (err) {
       console.error('❌ Redis ping failed:', err);
